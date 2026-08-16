@@ -4,6 +4,10 @@ struct PracticeModeView: View {
     let displayMode: DisplayMode
     @EnvironmentObject private var settings: AppSettings
     @EnvironmentObject private var viewModel: MagicNumberViewModel
+    
+    @State private var cardRankIndex: Int = UserDefaults.standard.integer(forKey: "card.rankIndex") // 0..13 (0 means reset -> "0")
+    @State private var cardSuitIndex: Int = UserDefaults.standard.integer(forKey: "card.suitIndex") // 0..4 (0 means reset -> "X")
+    @State private var isResetting = false
 
     var body: some View {
         VStack(spacing: 28) {
@@ -36,7 +40,7 @@ struct PracticeModeView: View {
                     .padding(.horizontal, 22)
                 } else {
                     // Card mode display
-                    CardDisplay(firstDigit: viewModel.firstDigit, secondDigit: viewModel.secondDigit)
+                    CardDisplay(rankIndex: cardRankIndex, suitIndex: cardSuitIndex)
                         .padding(.horizontal, 22)
                 }
             }
@@ -44,7 +48,15 @@ struct PracticeModeView: View {
             VStack(spacing: 12) {
                 HStack(spacing: 12) {
                     Button {
+                        isResetting = true
                         viewModel.reset()
+                        cardRankIndex = 0
+                        cardSuitIndex = 0
+                        UserDefaults.standard.set(cardRankIndex, forKey: "card.rankIndex")
+                        UserDefaults.standard.set(cardSuitIndex, forKey: "card.suitIndex")
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
+                            isResetting = false
+                        }
                     } label: {
                         Label("Reset", systemImage: "arrow.counterclockwise")
                             .frame(maxWidth: .infinity)
@@ -55,6 +67,33 @@ struct PracticeModeView: View {
             .padding(.horizontal, 22)
 
             Spacer(minLength: 28)
+        }
+        .onAppear {
+            // Initialize indices from defaults or reset state
+            if viewModel.firstDigit == 0 && viewModel.secondDigit == 0 {
+                cardRankIndex = 0
+                cardSuitIndex = 0
+            }
+        }
+        .onChange(of: viewModel.firstDigit) { _ in
+            if isResetting || (viewModel.firstDigit == 0 && viewModel.secondDigit == 0) { return }
+            // Increment rank cycle: 0 -> 1 (A), then 1..13 -> wrap to 1
+            if cardRankIndex == 0 {
+                cardRankIndex = 1
+            } else {
+                cardRankIndex = (cardRankIndex % 13) + 1
+            }
+            UserDefaults.standard.set(cardRankIndex, forKey: "card.rankIndex")
+        }
+        .onChange(of: viewModel.secondDigit) { _ in
+            if isResetting || (viewModel.firstDigit == 0 && viewModel.secondDigit == 0) { return }
+            // Increment suit cycle: 0 -> 1 (♥︎), then 1..4 -> wrap to 1
+            if cardSuitIndex == 0 {
+                cardSuitIndex = 1
+            } else {
+                cardSuitIndex = (cardSuitIndex % 4) + 1
+            }
+            UserDefaults.standard.set(cardSuitIndex, forKey: "card.suitIndex")
         }
     }
 }
@@ -122,27 +161,31 @@ struct SecondaryButtonStyle: ButtonStyle {
 }
 
 private struct CardDisplay: View {
-    let firstDigit: Int
-    let secondDigit: Int
+    let rankIndex: Int // 0..13 (0 => "0")
+    let suitIndex: Int // 0..4 (0 => "X")
 
     private var rankSymbol: String {
-        let ranks = ["2","3","4","5","6","7","8","9","10","J","Q","K","A"]
-        let idx = Int((Double(firstDigit).rounded(.toNearestOrAwayFromZero) * 12.0 / 9.0).rounded())
-        let clamped = max(0, min(12, idx))
-        return ranks[clamped]
+        if rankIndex == 0 { return "0" }
+        let ranks13 = ["A","2","3","4","5","6","7","8","9","10","J","Q","K"]
+        let idx = max(1, min(13, rankIndex)) - 1
+        return ranks13[idx]
     }
 
     private var suitSymbol: String {
-        let suits = ["♠︎","♥︎","♦︎","♣︎"]
-        let idx = Int((Double(secondDigit) * 3.0 / 9.0).rounded())
-        let clamped = max(0, min(3, idx))
-        return suits[clamped]
+        if suitIndex == 0 { return "X" }
+        let suits4 = ["♥︎","♦︎","♠︎","♣︎"]
+        let idx = max(1, min(4, suitIndex)) - 1
+        return suits4[idx]
     }
 
     private var suitColor: Color {
         switch suitSymbol {
-        case "♥︎", "♦︎": return Color(red: 0.98, green: 0.36, blue: 0.44)
-        default: return .white
+        case "♥︎", "♦︎":
+            return Color(red: 0.98, green: 0.36, blue: 0.44)
+        case "X":
+            return .white.opacity(0.82)
+        default:
+            return .white
         }
     }
 
@@ -186,8 +229,8 @@ private struct CardDisplay: View {
         }
         .frame(maxWidth: .infinity)
         .frame(height: 260)
-        .animation(.spring(response: 0.45, dampingFraction: 0.86), value: firstDigit)
-        .animation(.spring(response: 0.45, dampingFraction: 0.86), value: secondDigit)
+        .animation(.spring(response: 0.45, dampingFraction: 0.86), value: rankIndex)
+        .animation(.spring(response: 0.45, dampingFraction: 0.86), value: suitIndex)
     }
 }
 
@@ -197,3 +240,4 @@ private struct CardDisplay: View {
         .environmentObject(MagicNumberViewModel(store: MagicNumberStore()))
         .background(AppBackground())
 }
+

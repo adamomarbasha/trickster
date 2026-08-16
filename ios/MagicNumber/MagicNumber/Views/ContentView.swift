@@ -67,6 +67,9 @@ struct ContentView: View {
 
                 mainContent
             }
+            .onChange(of: displayMode) { newValue in
+                UserDefaults.standard.set(newValue.rawValue, forKey: "displayModePreference")
+            }
         }
         .preferredColorScheme(.dark)
         .animation(.spring(response: 0.4, dampingFraction: 0.86), value: viewModel.mode)
@@ -75,6 +78,10 @@ struct ContentView: View {
                 .environmentObject(settings)
         }
         .onAppear {
+            if let raw = UserDefaults.standard.string(forKey: "displayModePreference"),
+               let saved = DisplayMode(rawValue: raw) {
+                displayMode = saved
+            }
             volumeObserver.start(
                 onIncrease: { viewModel.incrementFirstDigit(hapticsEnabled: settings.hapticsEnabled) },
                 onDecrease: { viewModel.incrementSecondDigit(hapticsEnabled: settings.hapticsEnabled) }
@@ -217,3 +224,4 @@ private struct DisplayModeButton: View {
         .environmentObject(AppSettings())
         .environmentObject(vm)
 }
+
