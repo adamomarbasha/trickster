@@ -14,10 +14,11 @@ final class VolumeButtonObserver: ObservableObject {
     private var isRecentering = false
     private var onIncrease: (() -> Void)?
     private var onDecrease: (() -> Void)?
+    private var isCoolingDown = false
 
     private let midpoint: Float = 0.5
-    private let debounceInterval: TimeInterval = 0.16
-    private let minimumDelta: Float = 0.005
+    private let debounceInterval: TimeInterval = 0.3
+    private let minimumDelta: Float = 0.02
 
     func start(onIncrease: @escaping () -> Void, onDecrease: @escaping () -> Void) {
         self.onIncrease = onIncrease
@@ -62,7 +63,7 @@ final class VolumeButtonObserver: ObservableObject {
     private func handleVolumeChange(_ newVolume: Float?) {
         guard let newVolume else { return }
 
-        if isRecentering {
+        if isRecentering || isCoolingDown {
             lastVolume = newVolume
             return
         }
@@ -80,6 +81,8 @@ final class VolumeButtonObserver: ObservableObject {
         } else {
             onDecrease?()
         }
+
+        isCoolingDown = true
 
         Task { @MainActor in
             try? await Task.sleep(nanoseconds: 90_000_000)
@@ -126,6 +129,7 @@ final class VolumeButtonObserver: ObservableObject {
         Task { @MainActor in
             try? await Task.sleep(nanoseconds: 240_000_000)
             isRecentering = false
+            isCoolingDown = false
         }
     }
 }
