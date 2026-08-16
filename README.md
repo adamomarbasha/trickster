@@ -1,26 +1,32 @@
 # Trickster 🎩
 
-A personal iOS utility built for performing magic tricks using the iPhone's physical volume buttons.
+A personal iOS magic utility that turns the iPhone’s physical volume buttons into discreet secret inputs.
 
-Trickster lets you secretly enter either a **two-digit number** or a **playing card** using the Volume Up and Volume Down buttons. The result is stored locally and can be retrieved through **Apple Shortcuts**, allowing the iPhone's **Action Button** to trigger a shortcut that sends the result through Messages.
+Trickster supports two performance modes:
+
+* **Number Mode** — secretly enter a two-digit number.
+* **Card Mode** — secretly enter a playing-card rank and suit.
+
+The selected result is stored locally and exposed to **Apple Shortcuts** through an App Intent, making it easy to trigger a reveal with the iPhone **Action Button**.
 
 No backend.
 No Twilio.
 No external API.
 No monthly service required.
 
-> Trickster is designed as a personal iPhone utility and is not intended for App Store distribution.
+> Trickster is designed as a personal performance utility for your own iPhone and is not intended for App Store distribution.
 
 ---
 
-## ✨ How It Works
+## How It Works
 
-The app uses the iPhone's physical volume buttons as discreet controls.
+The app uses the iPhone’s physical volume buttons as hidden controls.
 
 ### Number Mode
 
-* **Volume Up** controls the first digit.
-* **Volume Down** controls the second digit.
+* **Volume Up** increments the first digit.
+* **Volume Down** increments the second digit.
+* Each digit cycles from `0` through `9`.
 
 Example:
 
@@ -31,126 +37,364 @@ Volume Down × 7
 Result: 47
 ```
 
-Each digit cycles through:
+Cycle:
 
 ```text
 0 → 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 → 9 → 0
 ```
 
+Reset returns Number Mode to:
+
+```text
+00
+```
+
 ---
 
-### Card Mode
+## Card Mode
 
-Card Mode converts the same two physical controls into a playing card.
+Card Mode uses the same physical buttons, but interprets them as card controls.
 
-**Volume Up** controls the card rank:
+### Rank
 
-```text
-2 → 3 → 4 → 5 → 6 → 7 → 8 → 9 → 10 → J → Q → K → A
-```
-
-**Volume Down** controls the suit:
+**Volume Up** advances the rank:
 
 ```text
-♠︎ → ♥︎ → ♦︎ → ♣︎
+A → 2 → 3 → 4 → 5 → 6 → 7 → 8 → 9 → 10 → J → Q → K → A
 ```
+
+Internally, Card Mode also has a reset-only rank state:
+
+```text
+0
+```
+
+### Suit
+
+**Volume Down** advances the suit:
+
+```text
+♥︎ → ♦︎ → ♠︎ → ♣︎ → ♥︎
+```
+
+Internally, Card Mode also has a reset-only suit state:
+
+```text
+X
+```
+
+So after Reset, Card Mode displays:
+
+```text
+0 X
+```
+
+The first Volume Up press advances the rank from `0` to `A`.
+
+The first Volume Down press advances the suit from `X` to `♥︎`.
 
 Example:
-
-```text
-Volume Up → K
-Volume Down → ♠︎
-
-Result: K ♠︎
-```
-
----
-
-## 🃏 Modes
-
-Trickster includes two input modes:
-
-```text
-NUMBER     CARD
-```
-
-### Number
-
-Displays a two-digit value such as:
-
-```text
-47
-```
-
-### Card
-
-Displays a playing card such as:
 
 ```text
 K ♠︎
 ```
 
-The mode can be changed from the selector at the top of the app.
-
 ---
 
-## 🎭 Practice & Stealth
+## Number / Card Selector
 
-### Practice Mode
-
-Practice Mode visibly displays the current value so you can learn and test the controls.
-
-Useful for:
-
-* rehearsing the trick
-* testing volume-button input
-* confirming the current value
-* checking card rank and suit
-
-### Stealth Mode
-
-Stealth Mode hides the secret value while still accepting physical volume-button input.
-
-The stored value continues updating normally and remains available to Apple Shortcuts.
-
-This allows the performer to operate the app without revealing the selected number or card.
-
----
-
-## 📲 Apple Shortcuts Integration
-
-Trickster exposes an App Intent to Apple Shortcuts:
+At the top of the interface is a polished segmented selector:
 
 ```text
-Get Magic Number
+NUMBER    CARD
 ```
 
-This action retrieves the most recently stored secret value.
+Switching between the modes changes how the stored inputs are presented and how the Shortcut result is returned.
 
-For Number Mode:
+The selected display mode is saved locally and restored when the app launches again.
+
+---
+
+## Independent Card State
+
+Card Mode does not simply reinterpret the two numeric digits.
+
+It maintains its own persisted state:
+
+```text
+card.rankIndex
+card.suitIndex
+```
+
+Rank values:
+
+```text
+0 = Reset state
+1 = A
+2 = 2
+3 = 3
+...
+10 = 10
+11 = J
+12 = Q
+13 = K
+```
+
+Suit values:
+
+```text
+0 = X
+1 = ♥︎
+2 = ♦︎
+3 = ♠︎
+4 = ♣︎
+```
+
+This keeps Card Mode deterministic and independent from Number Mode.
+
+---
+
+## Reset Behavior
+
+Reset is designed to restore both modes cleanly.
+
+### Number Mode
+
+```text
+00
+```
+
+### Card Mode
+
+```text
+0 X
+```
+
+The reset logic uses a short reset guard so state-change callbacks do not accidentally advance the card immediately after resetting.
+
+This prevents issues such as:
+
+```text
+Reset
+→ A ♥︎
+```
+
+when the expected state is:
+
+```text
+Reset
+→ 0 X
+```
+
+---
+
+## Practice Mode
+
+Practice Mode visibly displays the current secret.
+
+### Number Mode
+
+Shows the two-digit result prominently:
 
 ```text
 47
 ```
 
-For Card Mode, the app can expose the appropriate stored representation depending on the implementation.
+### Card Mode
 
-The value is stored locally so Shortcuts can retrieve it even when the app has been backgrounded after entering the secret.
+Shows the current playing card:
+
+```text
+K ♠︎
+```
+
+The interface uses a premium glass/liquid-inspired design with:
+
+* large animated typography
+* glass surfaces
+* subtle gradients
+* soft glow
+* smooth transitions
+* elegant card presentation
+* responsive value animations
+* native SwiftUI effects
 
 ---
 
-## ⚡ Action Button Setup
+## Stealth Mode
 
-On supported iPhones, such as iPhone 15 Pro and newer models with an Action Button, Trickster works especially well with Apple Shortcuts.
+Stealth Mode hides the secret result while preserving all input behavior.
 
-Example workflow:
+You can still use:
+
+* Volume Up
+* Volume Down
+* Number Mode
+* Card Mode
+* persistent state
+* Apple Shortcuts
+
+without visibly revealing the selected value.
+
+This is intended for live performance situations where the screen should remain discreet.
+
+---
+
+## Volume Button Controls
+
+Trickster does not modify the meaning of the physical buttons at the low-level input layer.
+
+The existing volume detection feeds the app state:
 
 ```text
-Trickster
+Volume Up
     ↓
-Volume buttons secretly enter value
+First input
+
+Volume Down
     ↓
-Value stored locally
+Second input
+```
+
+The current display mode decides how those inputs are interpreted.
+
+### Number Mode
+
+```text
+Volume Up   → first digit
+Volume Down → second digit
+```
+
+### Card Mode
+
+```text
+Volume Up   → next rank
+Volume Down → next suit
+```
+
+---
+
+## Volume Button Reliability
+
+iOS does not expose public APIs such as:
+
+```swift
+volumeUpPressed()
+volumeDownPressed()
+```
+
+Trickster instead observes system media-volume changes.
+
+The implementation uses:
+
+* `AVAudioSession`
+* `AVAudioSession.outputVolume`
+* `MPVolumeView`
+* direction detection
+* debounce / cooldown handling
+* system-volume recentering
+
+The hidden `MPVolumeView` is:
+
+```text
+tiny
+offscreen
+non-interactive
+single-instance
+```
+
+to prevent it from blocking SwiftUI touches.
+
+The observer also uses bounded retries when waiting for a key window.
+
+---
+
+## Single-Step Volume Handling
+
+To reduce accidental double increments from a single hardware press, Trickster uses:
+
+* a cooldown state
+* a debounce interval
+* a minimum volume delta
+* protection while volume is being recentered
+
+This helps ensure:
+
+```text
+one physical press
+=
+one increment
+```
+
+as consistently as iOS allows.
+
+---
+
+## Persistent Storage
+
+Trickster stores its state locally using `UserDefaults`.
+
+Important persisted values include:
+
+```text
+magic.combinedDigits
+card.rankIndex
+card.suitIndex
+displayModePreference
+```
+
+This allows the app and Apple Shortcuts to share the latest result.
+
+No cloud database is required.
+
+---
+
+## Apple Shortcuts Integration
+
+Trickster exposes an App Intent:
+
+```text
+Get Magic Number
+```
+
+Despite the name, the action returns the current result based on the selected mode.
+
+### Number Mode
+
+Example:
+
+```text
+47
+```
+
+### Card Mode
+
+Example:
+
+```text
+K ♠︎
+```
+
+### Reset state in Card Mode
+
+```text
+0 X
+```
+
+The App Intent reads the same persisted values used by the main interface, so the Shortcut result matches what the app shows.
+
+---
+
+## Action Button Workflow
+
+On an iPhone with an Action Button, the intended workflow is:
+
+```text
+Open Trickster
+    ↓
+Secretly enter value with volume buttons
+    ↓
+Value is stored locally
     ↓
 Hold Action Button
     ↓
@@ -160,14 +404,16 @@ Get Magic Number
     ↓
 Send Message
     ↓
-Recipient receives result
+Recipient receives the reveal
 ```
 
-### Create the Shortcut
+---
 
-Open **Shortcuts** on your iPhone.
+## Create the Shortcut
 
-Create a new shortcut and add:
+Open the **Shortcuts** app on your iPhone.
+
+Create a new shortcut with:
 
 ```text
 Get Magic Number
@@ -175,18 +421,20 @@ Get Magic Number
 Send Message
 ```
 
-In the **Send Message** action:
+For the **Send Message** action:
 
-1. Set the message content to the output of `Get Magic Number`.
-2. Select the desired recipient.
-3. Disable **Show When Run** if available and appropriate.
-4. Name the shortcut:
+1. Tap the Message field.
+2. Choose **Select Variable**.
+3. Select the output from **Get Magic Number**.
+4. Choose the desired recipient.
+5. Disable **Show When Run** if available and appropriate.
+6. Name the Shortcut:
 
 ```text
 Trick Number
 ```
 
-Then go to:
+Then assign it to the Action Button:
 
 ```text
 Settings
@@ -195,79 +443,109 @@ Settings
 → Trick Number
 ```
 
-Now holding the Action Button can trigger the shortcut.
+---
 
-> Messages and Shortcuts behavior is ultimately controlled by iOS. Depending on system permissions and configuration, iOS may occasionally request confirmation.
+## Shortcut Output Examples
+
+### Number Mode
+
+App:
+
+```text
+47
+```
+
+Shortcut returns:
+
+```text
+47
+```
+
+### Card Mode
+
+App:
+
+```text
+Q ♦︎
+```
+
+Shortcut returns:
+
+```text
+Q ♦︎
+```
+
+### Card Mode after Reset
+
+App:
+
+```text
+0 X
+```
+
+Shortcut returns:
+
+```text
+0 X
+```
 
 ---
 
-## 🎨 Interface
+## Premium UI
 
-The interface is designed as a premium, minimal magic utility with inspiration from modern glass and liquid UI styles.
+The interface is inspired by modern glass, liquid, and motion-based UI design.
 
-Visual elements include:
+Visual inspiration includes concepts from:
 
-* dark premium appearance
+https://github.com/DavidHDev/canvas-ui
+
+The Canvas UI library itself is **not imported into the app**.
+
+Instead, similar visual ideas are recreated natively using SwiftUI.
+
+The app uses techniques such as:
+
+* SwiftUI gradients
 * glass-style surfaces
-* subtle gradients
-* animated value transitions
-* fluid motion
-* elegant typography
-* discreet Stealth Mode
-* responsive haptic feedback
-* polished Number/Card mode switching
+* blur
+* animated transitions
+* glow
+* native materials
+* smooth value morphing
+* premium typography
+* subtle ambient effects
 
-The design is inspired in part by the visual concepts found in [Canvas UI](https://github.com/DavidHDev/canvas-ui), recreated natively using SwiftUI.
-
-Canvas UI itself is **not included or embedded** in this project.
+The goal is to make the app feel like a polished performance tool rather than a debug utility.
 
 ---
 
-## 🏗 Architecture
+## Architecture
 
 ```text
 Physical Volume Buttons
         ↓
 VolumeButtonObserver
         ↓
+MagicNumberViewModel
+        ↓
 MagicNumberStore
         ↓
-Persistent Local Storage
+Persistent UserDefaults
         ↓
-SwiftUI Interface
-        +
-App Intent
-        ↓
-Apple Shortcuts
-        ↓
-Optional Send Message Action
+        ├── SwiftUI Interface
+        │
+        └── GetMagicNumberIntent
+                 ↓
+            Apple Shortcuts
+                 ↓
+            Send Message
 ```
 
-There is no remote server involved.
+Card Mode also maintains its own persisted rank and suit indices.
 
 ---
 
-## 🔒 Privacy
-
-Trickster does not require:
-
-* user accounts
-* analytics
-* advertising
-* tracking
-* Twilio
-* external SMS providers
-* external APIs
-* remote databases
-* backend servers
-
-The secret value is stored locally on the device.
-
-Any message sent using Apple Shortcuts is handled by Apple's Shortcuts and Messages systems.
-
----
-
-## 🛠 Technologies
+## Technologies
 
 Built with:
 
@@ -283,7 +561,7 @@ Built with:
 
 ---
 
-## 📁 Project Structure
+## Repository Structure
 
 ```text
 trickster/
@@ -304,19 +582,22 @@ trickster/
 Important files include:
 
 ```text
-VolumeButtonObserver.swift
-MagicNumberStore.swift
-GetMagicNumberIntent.swift
-MagicNumberViewModel.swift
+MagicNumberApp.swift
 ContentView.swift
 PracticeModeView.swift
 StealthModeView.swift
 SettingsView.swift
+MagicNumberViewModel.swift
+MagicNumberStore.swift
+VolumeButtonObserver.swift
+GetMagicNumberIntent.swift
+AppSettings.swift
+Haptics.swift
 ```
 
 ---
 
-## 🚀 Running the App
+## Running the App
 
 ### Requirements
 
@@ -324,32 +605,20 @@ SettingsView.swift
 * Xcode
 * iPhone
 * Apple ID
-* iOS device with physical volume buttons
+* physical iPhone for volume-button testing
 
-A physical iPhone is required to properly test volume-button behavior.
-
-### Open the Project
-
-From Terminal:
+Open the project:
 
 ```bash
 cd trickster
 open ios/MagicNumber/MagicNumber.xcodeproj
 ```
 
-Or open:
-
-```text
-ios/MagicNumber/MagicNumber.xcodeproj
-```
-
-directly in Xcode.
-
 ---
 
-## 📱 Install on Your Personal iPhone
+## Install on Your iPhone
 
-You do **not** need to publish Trickster to the App Store.
+You do not need to publish Trickster to the App Store.
 
 In Xcode:
 
@@ -364,7 +633,7 @@ In Xcode:
 9. Select your iPhone as the run destination.
 10. Press **Run**.
 
-If requested on the iPhone, enable:
+If prompted, enable Developer Mode:
 
 ```text
 Settings
@@ -372,7 +641,7 @@ Settings
 → Developer Mode
 ```
 
-You may also need to trust the developer profile under:
+You may also need to trust the developer profile:
 
 ```text
 Settings
@@ -382,98 +651,35 @@ Settings
 
 ---
 
-## 🆓 Free Apple ID Installation
+## Free Apple ID Installation
 
-A paid Apple Developer account is not required for personal testing.
+A paid Apple Developer account is not required for personal use.
 
-With a free Apple ID, Xcode can install the application directly onto your personal device.
+With a free Apple ID, Xcode can install the app directly onto your iPhone.
 
-The development signing profile generally expires after approximately **7 days**.
-
-After expiration:
-
-1. Connect the iPhone to the Mac again.
-2. Open the project in Xcode.
-3. Press **Run**.
-
-The app can then be used normally again.
-
-During the valid signing period, the Mac does **not** need to remain connected.
-
-You can launch Trickster directly from the iPhone Home Screen like any other app.
-
----
-
-## 🔊 Volume Button Detection
-
-iOS does not expose a public API such as:
-
-```swift
-volumeUpPressed()
-volumeDownPressed()
-```
-
-Trickster instead observes changes to the system media volume.
-
-The implementation uses:
-
-* `AVAudioSession`
-* `outputVolume` observation
-* `MPVolumeView`
-* volume direction detection
-
-Conceptually:
+The free development signing profile commonly expires after roughly:
 
 ```text
-Volume increases
-→ Volume Up
-
-Volume decreases
-→ Volume Down
+7 days
 ```
 
-The system volume is recentered when necessary so both physical buttons can continue generating detectable changes.
+After that:
+
+1. Connect the iPhone to your Mac.
+2. Open the project in Xcode.
+3. Press **Run** again.
+
+During the valid signing period, the app can be launched normally from the iPhone Home Screen.
+
+Your Mac does not need to stay connected.
 
 ---
 
-## ⚠️ Volume Button Limitations
+## Basic Testing
 
-Because this relies on system media-volume behavior, there are unavoidable iOS limitations.
+### Number Mode
 
-### The app should be active
-
-For reliable physical volume-button detection, Trickster should be open in the foreground while entering the secret value.
-
-Once the value has been stored, Apple Shortcuts can retrieve that value afterward.
-
-### Audio routes can affect behavior
-
-Volume detection may behave differently while connected to:
-
-* AirPods
-* Bluetooth speakers
-* AirPlay
-* CarPlay
-* external audio devices
-* active phone calls
-
-For performances, testing the exact setup beforehand is recommended.
-
-### iOS controls system behavior
-
-Future iOS updates may alter how system volume observation behaves.
-
-Trickster uses public Apple APIs only.
-
----
-
-## 🧪 Basic Test
-
-Open Trickster on a physical iPhone.
-
-### Number Test
-
-Reset the value.
+Reset the app.
 
 Press:
 
@@ -488,15 +694,9 @@ Expected result:
 47
 ```
 
-Then run:
+Run `Get Magic Number`.
 
-```text
-Get Magic Number
-```
-
-from Shortcuts.
-
-Expected output:
+Expected Shortcut output:
 
 ```text
 47
@@ -504,92 +704,116 @@ Expected output:
 
 ---
 
-## 🃏 Card Test
+## Card Mode Testing
 
-Switch to Card Mode.
+Reset Card Mode.
 
-Use Volume Up to cycle through ranks.
-
-Use Volume Down to cycle through suits.
-
-Confirm that the displayed card updates correctly while preserving the existing volume-button input behavior.
-
----
-
-## 🎩 Performance Example
-
-A basic performance workflow could be:
+Expected:
 
 ```text
-1. Open Trickster.
-
-2. Enter the secret value using the physical
-   volume buttons.
-
-3. Keep the phone naturally in your hand.
-
-4. Hold the Action Button.
-
-5. "Trick Number" runs.
-
-6. Apple Shortcuts retrieves the stored result.
-
-7. The result is sent to the configured recipient.
+0 X
 ```
+
+Press Volume Up once.
+
+Expected rank:
+
+```text
+A
+```
+
+Press Volume Down once.
+
+Expected result:
+
+```text
+A ♥︎
+```
+
+Continue pressing Volume Up to cycle:
+
+```text
+A → 2 → 3 → ... → Q → K → A
+```
+
+Continue pressing Volume Down to cycle:
+
+```text
+♥︎ → ♦︎ → ♠︎ → ♣︎ → ♥︎
+```
+
+Run `Get Magic Number`.
+
+The returned value should exactly match the card shown in the app.
 
 ---
 
-## 🐛 Troubleshooting
+## Troubleshooting
 
-### Volume buttons do nothing
+### UI is frozen
+
+The hidden `MPVolumeView` should remain:
+
+```text
+offscreen
+1 × 1
+isUserInteractionEnabled = false
+```
+
+There should only be one instance.
+
+### Volume button does nothing
 
 Make sure:
 
-* you are using a physical iPhone
-* Trickster is open in the foreground
-* the app has been running for a moment after launch
-* no unusual external audio route is active
+* you are using a real iPhone
+* the app is active in the foreground
+* the observer has had a moment to initialize
+* no unusual external audio route is interfering
 
-Try reopening the app if iOS interrupted the audio session.
+### One press increments twice
 
-### UI becomes unresponsive
+The app includes debounce and cooldown logic.
 
-The hidden `MPVolumeView` used for volume handling should:
-
-* remain tiny
-* remain offscreen
-* have user interaction disabled
-* never cover the SwiftUI interface
-
-### Shortcut cannot find `Get Magic Number`
-
-Try:
-
-1. Run the latest version of Trickster once.
-2. Open Shortcuts.
-3. Search again for:
+If necessary, adjust:
 
 ```text
-Get Magic Number
+debounceInterval
+minimumDelta
+cooldown timing
 ```
 
-If necessary, delete an older instance of the action from the shortcut and add it again.
+carefully in `VolumeButtonObserver.swift`.
 
 ### Shortcut returns an old value
 
-Open Trickster and change the secret value again.
+Open the app and change the value again.
 
-The app persists changes immediately so the App Intent can retrieve the latest stored result.
+The store persists changes immediately.
 
-### Shortcut opens Messages but does not include the number
+### Shortcut cannot find Get Magic Number
 
-Edit the shortcut and make sure the output variable from:
+Try:
+
+1. Run the newest build of Trickster.
+2. Open Shortcuts.
+3. Search for:
 
 ```text
 Get Magic Number
 ```
 
-is inserted into the **Message** field of the `Send Message` action.
+If an old version is already inside your Shortcut, delete that action and add it again.
+
+### Shortcut opens Messages without the value
+
+Make sure the **Message** field contains the output variable from:
+
+```text
+Get Magic Number
+```
+
+rather than plain text.
 
 ---
 
@@ -610,6 +834,51 @@ git commit -m "Update Trickster"
 git push
 ```
 
+Example feature commit:
+
+```bash
+git add .
+git commit -m "Polish Trickster UI and add card mode"
+git push
+```
+
+---
+
+## Privacy
+
+Trickster does not require:
+
+* accounts
+* analytics
+* tracking
+* advertising
+* external APIs
+* Twilio
+* backend servers
+* external databases
+
+The secret state is stored locally on the iPhone.
+
+Messages are sent through Apple Shortcuts and Messages.
+
+---
+
+## Limitations
+
+The app relies on public iOS volume APIs rather than dedicated volume-button callbacks.
+
+Possible factors that can affect behavior include:
+
+* Bluetooth audio
+* AirPods
+* AirPlay
+* CarPlay
+* phone calls
+* external audio routes
+* future iOS behavior changes
+
+For reliable performances, test the exact device setup beforehand.
+
 ---
 
 ## License
@@ -622,11 +891,10 @@ See [LICENSE](LICENSE).
 
 Trickster is a personal utility created for entertainment and magic-performance purposes.
 
-Use messaging functionality responsibly and only send messages to people who have agreed to participate.
+Use messaging functionality responsibly and only with participants who have agreed to receive the message.
 
 ---
 
 # Trickster
 
-**Volume buttons become secret inputs.
-Shortcuts becomes the reveal.** 🎩
+**Two buttons. One secret. One reveal. 🎩**
